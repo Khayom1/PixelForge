@@ -1,9 +1,9 @@
+import pytest
+
 from pixelforge.provider import ModelReply
 from pixelforge.runtime import AgentRuntime
 from pixelforge.tools import build_registry
 from pixelforge.workspace import Workspace
-
-import pytest
 
 
 class FakeProvider:
@@ -89,5 +89,5 @@ def test_agent_rejects_malformed_tool_arguments(tmp_path) -> None:
             }])
 
     runtime = AgentRuntime(Malformed(), build_registry(Workspace(tmp_path)))
-    with pytest.raises(RuntimeError, match="JSON string"):
+    with pytest.raises(TypeError, match="JSON string"):
         runtime.run("List files.")
