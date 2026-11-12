@@ -4,13 +4,20 @@ PixelForge executes model-directed operations. Treat model output, project files
 
 ## Current controls
 
-- Provider credentials are read from environment variables only.
-- Credentials are not written into generated projects or trace output.
-- Filesystem tools are rooted in one workspace and reject absolute paths, parent traversal, and symlink components.
-- Text reads and writes have size limits.
-- Only explicitly registered tools can be called.
+- Provider credentials are read from environment variables only and are never added to model messages or trace events by the runtime.
+- Provider endpoint configuration must use an absolute HTTP(S) URL without embedded user information, query strings, or fragments.
+- Provider requests have a bounded timeout (1–600 seconds), and response bodies are capped at 5 MiB.
+- HTTP error responses are not echoed into CLI errors, preventing arbitrary response bodies from being displayed as diagnostic text.
+- Filesystem tools are rooted in one workspace and reject absolute paths, parent traversal, backslash paths, and symlink components.
+- The model cannot read or write common credential/private metadata paths, including `.env` variants, `.git`, `.pixelforge`, SSH/AWS/Azure/Docker configuration directories, credential files, and private-key/certificate extensions.
+- Workspace listings omit private metadata, dependency caches, generated build output, and symlinked files/directories.
+- Text reads and writes have size limits; writes use a temporary file and atomic replacement.
+- Phaser scaffold generation refuses to replace an existing project directory and removes an incomplete new project if generation fails.
+- Only explicitly registered tools can be called. Tool call count, argument size, per-result size, and aggregate tool-result size are bounded.
 - The agent loop has a hard maximum step count.
 - No unrestricted shell, subprocess, network-fetch, or package-install tool is exposed to the model.
+
+These controls reduce accidental exposure and resource exhaustion. They are not a substitute for operating-system isolation: the CLI runs with the privileges of the local user, and the model can modify ordinary files inside the selected workspace.
 
 ## Deployment guidance
 
