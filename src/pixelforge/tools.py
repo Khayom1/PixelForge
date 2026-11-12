@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import re
 from collections.abc import Callable
@@ -63,6 +64,7 @@ def create_phaser_game(workspace: Workspace, name: str, directory: str) -> dict[
     title = name.strip()
     if not title or len(title) > 64:
         raise ValueError("name must contain 1 to 64 characters.")
+    safe_title = html.escape(title, quote=True)
     prefix = slug + "/"
     files = {
         "package.json": json.dumps({
@@ -76,10 +78,10 @@ def create_phaser_game(workspace: Workspace, name: str, directory: str) -> dict[
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>{title}</title>
+<title>{safe_title}</title>
 </head>
 <body>
-<main id="game" aria-label="{title} game"></main>
+<main id="game" aria-label="{safe_title} game"></main>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>
@@ -91,6 +93,7 @@ class MainScene extends Phaser.Scene {
   constructor() { super('main'); this.score = 0; this.touchDirection = 0; }
   create() {
     const { width, height } = this.scale;
+    this.physics.world.setBounds(0, 0, width, height);
     this.add.rectangle(width / 2, height / 2, width, height, 0x17243a);
     this.add.text(20, 18, 'STAR RUNNER', { fontSize: '22px', color: '#ffffff' });
     this.scoreText = this.add.text(20, 48, 'Stars: 0', { color: '#b9d7ff' });
