@@ -48,6 +48,46 @@ def test_provider_sends_model_messages_tools_and_bearer_key(monkeypatch) -> None
     assert captured["timeout"] == 12
 
 
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "http://api.example.com/v1",
+        "http://192.0.2.10:8080/v1",
+        "http://localhost.example/v1",
+    ],
+)
+def test_provider_rejects_api_keys_over_remote_http(base_url) -> None:
+    with pytest.raises(ValueError, match="require HTTPS"):
+        OpenAICompatibleProvider(base_url, "test", "secret-token")
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "http://localhost:11434/v1",
+        "http://localhost.:11434/v1",
+        "http://127.0.0.1:11434/v1",
+        "http://127.0.0.2:11434/v1",
+        "http://[::1]:11434/v1",
+    ],
+)
+def test_provider_allows_api_keys_over_loopback_http(base_url) -> None:
+    provider = OpenAICompatibleProvider(base_url, "local-model", "local-token")
+    assert provider.api_key == "local-token"
+
+
+def test_provider_allows_api_keys_over_remote_https() -> None:
+    provider = OpenAICompatibleProvider(
+        "https://api.example.com/v1", "cloud-model", "secret-token"
+    )
+    assert provider.api_key == "secret-token"
+
+
+def test_provider_allows_remote_http_without_api_key() -> None:
+    provider = OpenAICompatibleProvider("http://api.example.com/v1", "test")
+    assert provider.api_key is None
+
+
 def test_provider_parses_tool_calls(monkeypatch) -> None:
     monkeypatch.setattr("urllib.request.urlopen", lambda *args, **kwargs: FakeResponse(
         json.dumps({"choices": [{"message": {"content": None, "tool_calls": [

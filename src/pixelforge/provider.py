@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+from ipaddress import ip_address
+from urllib.parse import urlsplit
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,6 +23,17 @@ class ModelReply:
     tool_calls: list[dict[str, Any]]
 
 
+def _is_loopback_host(host: str | None) -> bool:
+    if not host:
+        return False
+    if host.rstrip(".").lower() == "localhost":
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 class OpenAICompatibleProvider:
     def __init__(
         self,
@@ -33,6 +46,12 @@ class OpenAICompatibleProvider:
         self.model = model
         self.api_key = api_key
         self.timeout_seconds = timeout_seconds
+        if self.api_key:
+            parsed_url = urlsplit(self.base_url)
+            if parsed_url.scheme != "https" and not _is_loopback_host(parsed_url.hostname):
+                raise ValueError(
+                    "API keys require HTTPS; plain HTTP is allowed only for loopback providers."
+                )
 
     def complete(
         self,
