@@ -2,7 +2,7 @@ import pytest
 
 from pixelforge.provider import ModelReply
 from pixelforge.runtime import AgentRuntime
-from pixelforge.tools import build_registry
+from pixelforge.tools import Tool, build_registry
 from pixelforge.workspace import Workspace
 
 
@@ -91,3 +91,66 @@ def test_agent_rejects_malformed_tool_arguments(tmp_path) -> None:
     runtime = AgentRuntime(Malformed(), build_registry(Workspace(tmp_path)))
     with pytest.raises(TypeError, match="JSON string"):
         runtime.run("List files.")
+
+
+def test_agent_rejects_oversized_user_prompt_before_provider_call(tmp_path) -> None:
+    class NoCalls:
+        called = False
+
+        def complete(self, messages, tools):
+            self.called = True
+            return ModelReply("unexpected", [])
+
+    provider = NoCalls()
+    runtime = AgentRuntime(provider, build_registry(Workspace(tmp_path)))
+    with pytest.raises(ValueError, match="64 KiB"):
+        runtime.run("x" * (64 * 1024 + 1))
+    assert provider.called is False
+
+
+def test_agent_rejects_oversized_system_prompt(tmp_path) -> None:
+    runtime = AgentRuntime(FakeProvider(), build_registry(Workspace(tmp_path)))
+    with pytest.raises(ValueError, match="32 KiB"):
+        runtime.run("Small task.", system_prompt="x" * (32 * 1024 + 1))
+
+
+def test_agent_rejects_oversized_model_content(tmp_path) -> None:
+    class Verbose:
+        def complete(self, messages, tools):
+            return ModelReply("x" * (128 * 1024 + 1), [])
+
+    runtime = AgentRuntime(Verbose(), build_registry(Workspace(tmp_path)))
+    with pytest.raises(RuntimeError, match="128 KiB"):
+        runtime.run("Small task.")
+
+
+def test_agent_replaces_oversized_tool_result_with_bounded_error(tmp_path) -> None:
+    class ResultInspector:
+        def __init__(self):
+            self.received = None
+            self.calls = 0
+
+        def complete(self, messages, tools):
+            self.calls += 1
+            if self.calls == 1:
+                return ModelReply("", [{
+                    "id": "large-call",
+                    "type": "function",
+                    "function": {"name": "large_output", "arguments": "{}"},
+                }])
+            self.received = messages[-1]["content"]
+            return ModelReply("Result safely bounded.", [])
+
+    registry = build_registry(Workspace(tmp_path))
+    registry.register(Tool(
+        name="large_output",
+        description="Return an intentionally oversized result for testing.",
+        parameters={"type": "object", "properties": {}, "additionalProperties": False},
+        handler=lambda _args: {"payload": "x" * (256 * 1024)},
+    ))
+    provider = ResultInspector()
+    runtime = AgentRuntime(provider, registry)
+    assert runtime.run("Check output limits.") == "Result safely bounded."
+    assert provider.received is not None
+    assert "omitted because the run output budget was exceeded" in provider.received
+    assert len(provider.received.encode("utf-8")) < 1024
