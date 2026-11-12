@@ -42,7 +42,7 @@ def test_settings_reject_unsafe_url_shapes(base_url: str) -> None:
 
 @pytest.mark.parametrize("timeout", [0, -1, float("inf"), float("nan"), 601])
 def test_settings_require_a_finite_bounded_timeout(timeout: float) -> None:
-    with pytest.raises(ValueError, match="timeout"):
+    with pytest.raises(ValueError, match="TIMEOUT"):
         Settings(model="test", timeout_seconds=timeout).validate_for_model_use()
 
 
