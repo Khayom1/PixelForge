@@ -33,3 +33,39 @@ def test_read_size_limit(tmp_path: Path) -> None:
     workspace.write_text("large.txt", "x" * 20)
     with pytest.raises(WorkspaceError):
         workspace.read_text("large.txt", max_bytes=10)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".env",
+        ".env.production",
+        ".git/config",
+        ".pixelforge/traces.jsonl",
+        ".ssh/id_ed25519",
+        "certs/private.pem",
+        "certs/signing.key",
+        ".npmrc",
+    ],
+)
+def test_rejects_credentials_and_private_metadata(tmp_path: Path, path: str) -> None:
+    workspace = Workspace(tmp_path)
+    with pytest.raises(WorkspaceError):
+        workspace.read_text(path)
+    with pytest.raises(WorkspaceError):
+        workspace.write_text(path, "must not be exposed")
+
+
+def test_file_listing_hides_private_and_generated_directories(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path)
+    (tmp_path / ".env").write_text("TOKEN=secret")
+    (tmp_path / ".env.local").write_text("TOKEN=secret")
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".git" / "config").write_text("private")
+    (tmp_path / ".pixelforge").mkdir()
+    (tmp_path / ".pixelforge" / "traces.jsonl").write_text("private")
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "library.js").write_text("vendor")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "main.js").write_text("safe")
+    assert workspace.list_files() == ["src/main.js"]
