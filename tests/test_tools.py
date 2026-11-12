@@ -1,5 +1,7 @@
 import json
 
+from pathlib import Path
+
 import pytest
 
 from pixelforge.tools import build_registry
@@ -69,7 +71,7 @@ def test_scaffold_rolls_back_partial_generation(tmp_path, monkeypatch) -> None:
     original_write = Workspace.write_text
 
     def fail_on_entrypoint(self, relative_path, content, max_bytes=256_000):
-        if relative_path == "src/main.js":
+        if Path(relative_path).name == "main.js":
             raise WorkspaceError("simulated write failure")
         return original_write(self, relative_path, content, max_bytes)
 
