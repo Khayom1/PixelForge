@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ version = "0.1.0"
 description = "An open-source, provider-independent AI agent for 2D game development."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Khayom Abdurahmonov", email = "142344499+Khayom1@users.noreply.github.com" }]
 dependencies = []
 keywords = ["ai-agent", "2d-games", "game-development", "phaser", "local-llm"]
