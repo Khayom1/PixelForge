@@ -11,6 +11,9 @@ from typing import Any, Protocol
 from pixelforge.provider import ModelReply
 from pixelforge.tools import ToolRegistry
 
+MAX_PROMPT_BYTES = 64 * 1024
+MAX_SYSTEM_PROMPT_BYTES = 32 * 1024
+MAX_MODEL_CONTENT_BYTES = 128 * 1024
 MAX_TOOL_CALLS_PER_STEP = 8
 MAX_TOOL_CALLS_PER_RUN = 32
 MAX_TOOL_ARGUMENT_BYTES = 64 * 1024
@@ -75,8 +78,16 @@ class AgentRuntime:
             raise TypeError("Prompt must be text.")
         if not prompt.strip():
             raise ValueError("Prompt cannot be empty.")
+        if len(prompt.encode("utf-8")) > MAX_PROMPT_BYTES:
+            raise ValueError("Prompt exceeds the 64 KiB limit.")
         if system_prompt is not None and not isinstance(system_prompt, str):
             raise TypeError("System prompt must be text.")
+        if (
+            system_prompt is not None
+            and len(system_prompt.encode("utf-8")) > MAX_SYSTEM_PROMPT_BYTES
+        ):
+            raise ValueError("System prompt exceeds the 32 KiB limit.")
+
         run_id = uuid.uuid4().hex
         messages = [
             {
@@ -99,6 +110,9 @@ class AgentRuntime:
                 raise TypeError("Provider returned an invalid response object.")
             if not isinstance(reply.content, str) or not isinstance(reply.tool_calls, list):
                 raise TypeError("Provider returned malformed message content or tool calls.")
+            if len(reply.content.encode("utf-8")) > MAX_MODEL_CONTENT_BYTES:
+                raise RuntimeError("Model response content exceeded the 128 KiB safety limit.")
+
             self._trace(
                 {
                     "run_id": run_id,
