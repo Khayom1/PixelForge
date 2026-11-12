@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
-from ipaddress import ip_address
-from urllib.parse import urlsplit
 from dataclasses import dataclass
+from ipaddress import ip_address
 from typing import Any
+from urllib.parse import urlsplit
 
 MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 
@@ -64,14 +64,15 @@ class OpenAICompatibleProvider:
         if tools:
             payload.update({"tools": tools, "tool_choice": "auto"})
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
         request = urllib.request.Request(
             f"{self.base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
             headers=headers,
             method="POST",
         )
+        if self.api_key:
+            # urllib deliberately omits unredirected headers when following redirects.
+            request.add_unredirected_header("Authorization", f"Bearer {self.api_key}")
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                 body = response.read(MAX_RESPONSE_BYTES + 1)

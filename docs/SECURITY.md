@@ -8,6 +8,7 @@ PixelForge executes model-directed operations. Treat model output, project files
 - Trace writes reject symlinked path components; on platforms with descriptor-relative filesystem APIs, directory traversal and final file opening use no-follow semantics. New trace files use restrictive permissions where supported.
 - Provider endpoint configuration must use an absolute HTTP(S) URL without embedded user information, query strings, or fragments.
 - Bearer API keys are sent only over HTTPS; plain HTTP endpoints are accepted with an API key only when the host is loopback (`localhost`, `127.0.0.0/8`, or `::1`).
+- Provider bearer credentials use unredirected request headers, so they are not forwarded to HTTP redirect targets.
 - Provider requests have a bounded timeout (1–600 seconds), and response bodies are capped at 5 MiB.
 - HTTP error responses are not echoed into CLI errors, preventing arbitrary response bodies from being displayed as diagnostic text.
 - Filesystem tools are rooted in one workspace and reject absolute paths, parent traversal, backslash paths, and symlink components.

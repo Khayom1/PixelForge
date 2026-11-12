@@ -1,5 +1,6 @@
 import json
 import urllib.error
+import urllib.request
 
 import pytest
 
@@ -29,7 +30,7 @@ def test_provider_sends_model_messages_tools_and_bearer_key(monkeypatch) -> None
 
     def fake_urlopen(request, timeout):
         captured["url"] = request.full_url
-        captured["authorization"] = request.get_header("Authorization")
+        captured["authorization"] = dict(request.header_items()).get("Authorization")
         captured["timeout"] = timeout
         captured["payload"] = json.loads(request.data)
         return FakeResponse(json.dumps({"choices": [{"message": {
@@ -86,6 +87,28 @@ def test_provider_allows_api_keys_over_remote_https() -> None:
 def test_provider_allows_remote_http_without_api_key() -> None:
     provider = OpenAICompatibleProvider("http://api.example.com/v1", "test")
     assert provider.api_key is None
+
+
+def test_provider_does_not_forward_api_key_to_redirect_target() -> None:
+    request = urllib.request.Request(
+        "https://api.example.com/v1/chat/completions",
+        data=b"{}",
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    request.add_unredirected_header("Authorization", "Bearer secret-token")
+
+    redirected = urllib.request.HTTPRedirectHandler().redirect_request(
+        request,
+        None,
+        302,
+        "Found",
+        {},
+        "https://attacker.example/collect",
+    )
+
+    assert redirected is not None
+    assert "Authorization" not in dict(redirected.header_items())
 
 
 def test_provider_parses_tool_calls(monkeypatch) -> None:
