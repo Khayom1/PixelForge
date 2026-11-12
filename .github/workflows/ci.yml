@@ -38,11 +38,11 @@ jobs:
       - name: Install PixelForge
         run: python -m pip install .
       - name: Generate a game project
-        run: pixelforge init --engine phaser --name "CI Smoke Test" --output ./.ci-game
+        run: pixelforge init --engine phaser --name "CI Smoke Test" --output ./ci-game
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Install generated game dependencies
-        run: npm install --prefix ./.ci-game
+        run: npm install --prefix ./ci-game
       - name: Build generated game
-        run: npm run build --prefix ./.ci-game
+        run: npm run build --prefix ./ci-game
