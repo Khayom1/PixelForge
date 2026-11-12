@@ -52,23 +52,31 @@ class AgentRuntime:
     def _validated_call(call: dict[str, Any]) -> tuple[str, str, str]:
         call_id = call.get("id")
         function = call.get("function")
-        if not isinstance(call_id, str) or not call_id or len(call_id) > 128:
-            raise RuntimeError("Model returned a tool call with an invalid ID.")
+        if not isinstance(call_id, str):
+            raise TypeError("Model returned a tool call ID that is not text.")
+        if not call_id or len(call_id) > 128:
+            raise ValueError("Model returned a tool call with an invalid ID.")
         if not isinstance(function, dict):
-            raise RuntimeError("Model returned a malformed tool call.")
+            raise TypeError("Model returned a tool call function that is not an object.")
         name = function.get("name")
         arguments = function.get("arguments", "{}")
-        if not isinstance(name, str) or not name or len(name) > 128:
-            raise RuntimeError("Model returned a tool call with an invalid name.")
+        if not isinstance(name, str):
+            raise TypeError("Model returned a tool name that is not text.")
+        if not name or len(name) > 128:
+            raise ValueError("Model returned a tool call with an invalid name.")
         if not isinstance(arguments, str):
-            raise RuntimeError(f"Tool arguments for {name} must be a JSON string.")
+            raise TypeError(f"Tool arguments for {name} must be a JSON string.")
         if len(arguments.encode("utf-8")) > MAX_TOOL_ARGUMENT_BYTES:
-            raise RuntimeError(f"Tool arguments for {name} exceed the 64 KiB limit.")
+            raise ValueError(f"Tool arguments for {name} exceed the 64 KiB limit.")
         return call_id, name, arguments
 
     def run(self, prompt: str, system_prompt: str | None = None) -> str:
-        if not isinstance(prompt, str) or not prompt.strip():
+        if not isinstance(prompt, str):
+            raise TypeError("Prompt must be text.")
+        if not prompt.strip():
             raise ValueError("Prompt cannot be empty.")
+        if system_prompt is not None and not isinstance(system_prompt, str):
+            raise TypeError("System prompt must be text.")
         run_id = uuid.uuid4().hex
         messages = [
             {
@@ -88,9 +96,9 @@ class AgentRuntime:
         for step in range(1, self.max_steps + 1):
             reply = self.provider.complete(messages, self.tools.schemas())
             if not isinstance(reply, ModelReply):
-                raise RuntimeError("Provider returned an invalid response object.")
+                raise TypeError("Provider returned an invalid response object.")
             if not isinstance(reply.content, str) or not isinstance(reply.tool_calls, list):
-                raise RuntimeError("Provider returned malformed message content or tool calls.")
+                raise TypeError("Provider returned malformed message content or tool calls.")
             self._trace(
                 {
                     "run_id": run_id,
@@ -116,7 +124,7 @@ class AgentRuntime:
             validated = [self._validated_call(call) for call in reply.tool_calls]
             call_ids = [call_id for call_id, _, _ in validated]
             if len(set(call_ids)) != len(call_ids):
-                raise RuntimeError("Model returned duplicate tool-call IDs.")
+                raise ValueError("Model returned duplicate tool-call IDs.")
 
             messages.append(
                 {
