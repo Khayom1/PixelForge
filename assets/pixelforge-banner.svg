@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+<title id="title">PixelForge — AI Game Engineer</title>
+<desc id="desc">A dark futuristic banner with a colorful 2D pixel platform game scene and the PixelForge open-source AI game development agent identity.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#09111f"/><stop offset=".55" stop-color="#111d32"/><stop offset="1" stop-color="#172a45"/></linearGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#67e8f9"/><stop offset=".55" stop-color="#60a5fa"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+  <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#14233a"/><stop offset="1" stop-color="#0c1729"/></linearGradient>
+  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#7dd3fc" stroke-opacity=".08"/></pattern>
+  <filter id="glow"><feGaussianBlur stdDeviation="12"/></filter>
+</defs>
+<rect width="1200" height="420" rx="28" fill="url(#bg)"/>
+<rect width="1200" height="420" rx="28" fill="url(#grid)"/>
+<circle cx="900" cy="180" r="180" fill="#3b82f6" opacity=".12" filter="url(#glow)"/>
+<path d="M0 344C180 310 300 388 500 348S850 300 1200 344V420H0Z" fill="#0a1424" opacity=".75"/>
+<g transform="translate(72 70)">
+  <rect x="0" y="0" width="58" height="58" rx="14" fill="#132844" stroke="#3b82f6" stroke-opacity=".7"/>
+  <path d="M13 16H45V25H35V35H25V45H13V35H22V25H13Z" fill="url(#accent)"/>
+  <path d="M36 35H45V45H36Z" fill="#a78bfa"/>
+  <text x="78" y="28" fill="#f8fafc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="24" font-weight="800" letter-spacing="2">PIXELFORGE</text>
+  <text x="79" y="52" fill="#7dd3fc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="3">OPEN-SOURCE AI GAME ENGINEER</text>
+  <text x="0" y="145" fill="#f8fafc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="43" font-weight="800">From idea to</text>
+  <text x="0" y="195" fill="url(#accent)" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="43" font-weight="800">playable 2D game.</text>
+  <text x="2" y="235" fill="#b7c7dc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17">Local models · Cloud APIs · Real project tools</text>
+  <g transform="translate(0 272)">
+    <rect width="138" height="34" rx="17" fill="#102a43" stroke="#38bdf8" stroke-opacity=".5"/>
+    <circle cx="17" cy="17" r="4" fill="#67e8f9"/>
+    <text x="30" y="22" fill="#d9f5ff" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">MODEL-AGNOSTIC</text>
+    <rect x="150" width="125" height="34" rx="17" fill="#1b2140" stroke="#a78bfa" stroke-opacity=".5"/>
+    <circle cx="167" cy="17" r="4" fill="#a78bfa"/>
+    <text x="180" y="22" fill="#e9ddff" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">MOBILE-AWARE</text>
+  </g>
+</g>
+<g transform="translate(650 52)">
+  <rect x="0" y="0" width="480" height="310" rx="20" fill="url(#panel)" stroke="#5b83b6" stroke-opacity=".55"/>
+  <path d="M0 46H480" stroke="#38516f" stroke-opacity=".7"/>
+  <circle cx="24" cy="23" r="5" fill="#fb7185"/><circle cx="42" cy="23" r="5" fill="#fbbf24"/><circle cx="60" cy="23" r="5" fill="#34d399"/>
+  <text x="88" y="27" fill="#91a8c5" font-family="ui-monospace,monospace" font-size="11">GAME PREVIEW / 2D PLATFORMER</text>
+  <rect x="18" y="64" width="444" height="224" rx="12" fill="#101f36"/>
+  <circle cx="365" cy="112" r="29" fill="#fbbf24" opacity=".9"/>
+  <circle cx="365" cy="112" r="45" fill="#fbbf24" opacity=".12"/>
+  <path d="M28 226L84 174L130 220L190 155L250 220L308 175L370 223L450 164V275H28Z" fill="#1c3b57"/>
+  <path d="M28 244L110 210L175 246L255 198L320 245L390 210L450 239V275H28Z" fill="#25516a"/>
+  <rect x="18" y="258" width="444" height="30" rx="0" fill="#235a4c"/>
+  <path d="M18 258H462" stroke="#67e8a5" stroke-width="4"/>
+  <g fill="#2f855a">
+    <rect x="48" y="246" width="12" height="12"/><rect x="72" y="250" width="9" height="8"/>
+    <rect x="410" y="246" width="12" height="12"/><rect x="438" y="249" width="8" height="9"/>
+  </g>
+  <g transform="translate(135 184)">
+    <rect x="8" y="0" width="28" height="29" rx="4" fill="#60a5fa"/>
+    <rect x="4" y="8" width="36" height="18" rx="4" fill="#93c5fd"/>
+    <rect x="12" y="10" width="5" height="5" fill="#0b1b31"/><rect x="27" y="10" width="5" height="5" fill="#0b1b31"/>
+    <rect x="10" y="27" width="8" height="12" fill="#a78bfa"/><rect x="27" y="27" width="8" height="12" fill="#a78bfa"/>
+    <rect x="3" y="37" width="15" height="5" fill="#dbeafe"/><rect x="26" y="37" width="15" height="5" fill="#dbeafe"/>
+  </g>
+  <g fill="#fde68a" stroke="#f59e0b" stroke-width="2">
+    <path d="M236 202L246 192L256 202L246 212Z"/><path d="M310 227L320 217L330 227L320 237Z"/>
+  </g>
+  <g fill="#dbeafe" opacity=".8">
+    <rect x="70" y="102" width="4" height="4"/><rect x="210" y="90" width="4" height="4"/>
+    <rect x="286" y="138" width="3" height="3"/><rect x="420" y="88" width="4" height="4"/>
+  </g>
+  <g transform="translate(22 78)">
+    <rect width="94" height="25" rx="7" fill="#0b1628" stroke="#34516f"/>
+    <circle cx="12" cy="12" r="4" fill="#34d399"/>
+    <text x="23" y="16" fill="#b8c9df" font-family="ui-monospace,monospace" font-size="10">BUILD READY</text>
+  </g>
+  <text x="22" y="301" fill="#6f87a5" font-family="ui-monospace,monospace" font-size="10">GENERATE  ·  INSPECT  ·  VERIFY  ·  ITERATE</text>
+</g>
+<text x="72" y="393" fill="#7187a3" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" letter-spacing="1.5">BUILT IN THE OPEN  /  DESIGNED FOR THE GAME DEV COMMUNITY</text>
+<path d="M1080 388H1128" stroke="url(#accent)" stroke-width="3" stroke-linecap="round"/>
+</svg>

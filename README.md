@@ -1,3 +1,5 @@
+![PixelForge — AI game engineer](assets/pixelforge-banner.svg)
+
 # PixelForge
 
 **An open-source AI agent for building playable 2D games.**
