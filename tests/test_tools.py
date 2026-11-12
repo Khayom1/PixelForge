@@ -25,6 +25,25 @@ def test_unknown_tool_is_denied(tmp_path) -> None:
     assert build_registry(Workspace(tmp_path)).execute("shell", "{}")["ok"] is False
 
 
+def test_write_text_file_accepts_empty_content(tmp_path) -> None:
+    result = build_registry(Workspace(tmp_path)).execute(
+        "write_text_file", json.dumps({"path": "empty.txt", "content": ""})
+    )
+    assert result["ok"]
+    target = tmp_path / "empty.txt"
+    assert target.is_file()
+    assert target.read_text(encoding="utf-8") == ""
+
+
+def test_write_text_file_rejects_non_text_content(tmp_path) -> None:
+    result = build_registry(Workspace(tmp_path)).execute(
+        "write_text_file", json.dumps({"path": "invalid.txt", "content": 42})
+    )
+    assert not result["ok"]
+    assert "must be text" in result["error"]
+    assert not (tmp_path / "invalid.txt").exists()
+
+
 def test_game_title_is_html_escaped(tmp_path) -> None:
     malicious_title = '<img src=x onerror=alert(1)>'
     result = build_registry(Workspace(tmp_path)).execute(
