@@ -15,7 +15,7 @@ class Settings:
     max_agent_steps: int = 8
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         return cls(
             base_url=os.getenv("PIXELFORGE_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
             model=os.getenv("PIXELFORGE_MODEL", ""),

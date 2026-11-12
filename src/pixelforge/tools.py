@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from pixelforge.workspace import Workspace, WorkspaceError
 
@@ -42,9 +43,9 @@ class ToolRegistry:
         try:
             args = json.loads(raw_arguments or "{}")
             if not isinstance(args, dict):
-                raise ValueError("Arguments must be a JSON object.")
+                raise TypeError("Arguments must be a JSON object.")
             return {"ok": True, "result": tool.handler(args)}
-        except (json.JSONDecodeError, ValueError, WorkspaceError, OSError) as exc:
+        except (json.JSONDecodeError, ValueError, TypeError, WorkspaceError, OSError) as exc:
             return {"ok": False, "error": str(exc)}
 
 
@@ -87,7 +88,7 @@ def create_phaser_game(workspace: Workspace, name: str, directory: str) -> dict[
 import './style.css';
 
 class MainScene extends Phaser.Scene {
-  constructor() { super('main'); this.score = 0; }
+  constructor() { super('main'); this.score = 0; this.touchDirection = 0; }
   create() {
     const { width, height } = this.scale;
     this.add.rectangle(width / 2, height / 2, width, height, 0x17243a);
@@ -112,16 +113,23 @@ class MainScene extends Phaser.Scene {
     });
     this.keys = this.input.keyboard.createCursorKeys();
     this.input.keyboard.on('keydown-SPACE', () => this.jump());
-    this.button(width - 150, 'LEFT', () => this.player.body.setVelocityX(-220));
-    this.button(width - 85, 'RIGHT', () => this.player.body.setVelocityX(220));
+    this.button(width - 160, 'LEFT', () => { this.touchDirection = -1; }, -1);
+    this.button(width - 95, 'RIGHT', () => { this.touchDirection = 1; }, 1);
     this.button(width - 35, 'JUMP', () => this.jump());
   }
-  button(x, label, action) {
+  button(x, label, action, direction = 0) {
     const item = this.add.text(x, this.scale.height - 18, label, {
       fontSize: '13px', color: '#fff', backgroundColor: '#314b6b',
       padding: { x: 10, y: 12 }
     }).setOrigin(0.5).setInteractive();
     item.on('pointerdown', action);
+    if (direction) {
+      const release = () => {
+        if (this.touchDirection === direction) this.touchDirection = 0;
+      };
+      item.on('pointerup', release);
+      item.on('pointerout', release);
+    }
   }
   jump() {
     if (this.player.body.blocked.down || this.player.body.touching.down) {
@@ -131,7 +139,7 @@ class MainScene extends Phaser.Scene {
   update() {
     if (this.keys.left.isDown) this.player.body.setVelocityX(-220);
     else if (this.keys.right.isDown) this.player.body.setVelocityX(220);
-    else this.player.body.setVelocityX(0);
+    else this.player.body.setVelocityX(this.touchDirection * 220);
     if (this.keys.up.isDown) this.jump();
   }
 }
