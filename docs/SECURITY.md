@@ -5,6 +5,7 @@ PixelForge executes model-directed operations. Treat model output, project files
 ## Current controls
 
 - Provider credentials are read from environment variables only and are never added to model messages or trace events by the runtime.
+- Trace writes reject symlinked path components; on platforms with descriptor-relative filesystem APIs, directory traversal and final file opening use no-follow semantics. New trace files use restrictive permissions where supported.
 - Provider endpoint configuration must use an absolute HTTP(S) URL without embedded user information, query strings, or fragments.
 - Provider requests have a bounded timeout (1–600 seconds), and response bodies are capped at 5 MiB.
 - HTTP error responses are not echoed into CLI errors, preventing arbitrary response bodies from being displayed as diagnostic text.

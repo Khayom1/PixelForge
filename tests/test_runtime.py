@@ -32,6 +32,43 @@ def test_agent_tool_loop_and_trace(tmp_path) -> None:
     assert '"event": "tool_result"' in trace.read_text()
 
 
+def test_agent_rejects_symlinked_trace_directory(tmp_path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (workspace.root / ".pixelforge").symlink_to(outside, target_is_directory=True)
+    runtime = AgentRuntime(
+        FakeProvider(),
+        build_registry(workspace),
+        trace_path=workspace.root / ".pixelforge" / "traces.jsonl",
+    )
+
+    with pytest.raises(RuntimeError, match="Trace path"):
+        runtime.run("Inspect the project.")
+
+    assert not (outside / "traces.jsonl").exists()
+
+
+def test_agent_rejects_symlinked_trace_file(tmp_path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    trace_directory = workspace.root / ".pixelforge"
+    trace_directory.mkdir()
+    outside_trace = tmp_path / "outside.jsonl"
+    outside_trace.write_text("preserve this file\n", encoding="utf-8")
+    trace_path = trace_directory / "traces.jsonl"
+    trace_path.symlink_to(outside_trace)
+    runtime = AgentRuntime(
+        FakeProvider(),
+        build_registry(workspace),
+        trace_path=trace_path,
+    )
+
+    with pytest.raises(RuntimeError, match="Trace path"):
+        runtime.run("Inspect the project.")
+
+    assert outside_trace.read_text(encoding="utf-8") == "preserve this file\n"
+
+
 def test_agent_step_limit(tmp_path) -> None:
     class NeverDone:
         def complete(self, messages, tools):

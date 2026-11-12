@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from pathlib import Path
@@ -44,11 +45,66 @@ class AgentRuntime:
         self.max_steps = max_steps
         self.trace_path = Path(trace_path) if trace_path else None
 
+    @staticmethod
+    def _open_trace_file(path: Path) -> int:
+        """Open a trace file without traversing symlinked directories or files."""
+        absolute_path = Path(os.path.abspath(path))
+        if not absolute_path.name:
+            raise RuntimeError("Trace path must identify a file.")
+
+        if (
+            hasattr(os, "O_NOFOLLOW")
+            and hasattr(os, "O_DIRECTORY")
+            and os.open in os.supports_dir_fd
+            and os.mkdir in os.supports_dir_fd
+        ):
+            directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            directory_fd = os.open(absolute_path.anchor, directory_flags)
+            try:
+                for part in absolute_path.parent.parts[1:]:
+                    try:
+                        next_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+                    except FileNotFoundError:
+                        try:
+                            os.mkdir(part, 0o700, dir_fd=directory_fd)
+                        except FileExistsError:
+                            pass
+                        next_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+                    os.close(directory_fd)
+                    directory_fd = next_fd
+
+                return os.open(
+                    absolute_path.name,
+                    os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW,
+                    0o600,
+                    dir_fd=directory_fd,
+                )
+            finally:
+                os.close(directory_fd)
+
+        # Portable fallback for platforms without descriptor-relative filesystem APIs.
+        for candidate in (absolute_path.parent, *absolute_path.parent.parents):
+            if candidate.is_symlink():
+                raise RuntimeError("Trace path must not contain symlink components.")
+        absolute_path.parent.mkdir(parents=True, exist_ok=True)
+        for candidate in (absolute_path, *absolute_path.parents):
+            if candidate.is_symlink():
+                raise RuntimeError("Trace path must not contain symlink components.")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        return os.open(absolute_path, flags, 0o600)
+
     def _trace(self, event: dict[str, Any]) -> None:
         if not self.trace_path:
             return
-        self.trace_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.trace_path.open("a", encoding="utf-8") as stream:
+        try:
+            descriptor = self._open_trace_file(self.trace_path)
+        except OSError as exc:
+            raise RuntimeError(
+                "Trace path contains a symlink or cannot be opened safely."
+            ) from exc
+        with os.fdopen(descriptor, "a", encoding="utf-8") as stream:
             stream.write(json.dumps({"timestamp": time.time(), **event}) + "\n")
 
     @staticmethod
