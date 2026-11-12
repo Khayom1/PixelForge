@@ -63,6 +63,14 @@ def required_string(args: dict[str, Any], key: str) -> str:
     return value
 
 
+def required_text(args: dict[str, Any], key: str) -> str:
+    """Return text without imposing a non-empty constraint."""
+    value = args.get(key)
+    if not isinstance(value, str):
+        raise TypeError(f"{key} must be text.")
+    return value
+
+
 def create_phaser_game(workspace: Workspace, name: str, directory: str) -> dict[str, Any]:
     slug = re.sub(r"[^a-z0-9-]+", "-", directory.lower()).strip("-")
     if not slug or slug != directory:
@@ -204,7 +212,7 @@ def build_registry(workspace: Workspace) -> ToolRegistry:
          "content": {"type": "string"}}, "required": ["path", "content"],
          "additionalProperties": False},
         lambda args: {"written": workspace.write_text(
-            required_string(args, "path"), required_string(args, "content"))},
+            required_string(args, "path"), required_text(args, "content"))},
     ))
     registry.register(Tool(
         "create_phaser_game", "Generate a playable Phaser 3 starter project.",
