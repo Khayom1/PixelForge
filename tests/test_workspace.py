@@ -221,3 +221,41 @@ def test_read_rechecks_link_count_after_open(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(os, "read", create_hard_link_during_read)
     with pytest.raises(WorkspaceError, match="Hard-linked"):
         workspace.read_text("notes.txt")
+
+
+@pytest.mark.skipif(
+    not Workspace._supports_descriptor_listing(),
+    reason="descriptor-relative directory listing is unavailable",
+)
+def test_listing_does_not_follow_directory_replaced_with_symlink(tmp_path, monkeypatch) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    nested = workspace.root / "nested"
+    nested.mkdir()
+    backup = workspace.root / "nested-original"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "private.txt").write_text("private content", encoding="utf-8")
+    replaced = False
+    original_open = os.open
+
+    def replace_before_open(path, flags, mode=0o777, *, dir_fd=None):
+        nonlocal replaced
+        if path == "nested" and dir_fd is not None and not replaced:
+            nested.rename(backup)
+            nested.symlink_to(outside, target_is_directory=True)
+            replaced = True
+        if dir_fd is None:
+            return original_open(path, flags, mode)
+        return original_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(os, "open", replace_before_open)
+    try:
+        assert workspace.list_files() == []
+    finally:
+        if nested.is_symlink():
+            nested.unlink()
+        if backup.exists():
+            backup.rename(nested)
+
+    assert replaced
+    assert (outside / "private.txt").read_text(encoding="utf-8") == "private content"
