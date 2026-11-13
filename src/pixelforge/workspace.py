@@ -179,6 +179,8 @@ class Workspace:
             metadata = os.fstat(descriptor)
             if not stat.S_ISREG(metadata.st_mode):
                 raise WorkspaceError("File is not a regular file.")
+            if metadata.st_nlink != 1:
+                raise WorkspaceError("Hard-linked files are not allowed.")
             if metadata.st_size > max_bytes:
                 raise WorkspaceError("File exceeds the read limit.")
 
@@ -190,6 +192,8 @@ class Workspace:
                 content.extend(chunk)
             if len(content) > max_bytes:
                 raise WorkspaceError("File exceeds the read limit.")
+            if os.fstat(descriptor).st_nlink != 1:
+                raise WorkspaceError("Hard-linked files are not allowed.")
             try:
                 return content.decode("utf-8")
             except UnicodeDecodeError as exc:

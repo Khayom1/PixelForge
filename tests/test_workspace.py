@@ -191,3 +191,33 @@ def test_read_rejects_parent_symlink_replaced_after_path_validation(tmp_path, mo
     finally:
         parent.unlink()
         backup.rename(parent)
+
+
+@pytest.mark.skipif(not hasattr(os, "link"), reason="hard links are unavailable")
+def test_read_rejects_hard_linked_file(tmp_path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    outside = tmp_path / "private.txt"
+    outside.write_text("private content", encoding="utf-8")
+    os.link(outside, workspace.root / "project-copy.txt")
+
+    with pytest.raises(WorkspaceError, match="Hard-linked"):
+        workspace.read_text("project-copy.txt")
+
+
+@pytest.mark.skipif(not hasattr(os, "link"), reason="hard links are unavailable")
+def test_read_rechecks_link_count_after_open(tmp_path, monkeypatch) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    target = workspace.root / "notes.txt"
+    target.write_text("workspace content", encoding="utf-8")
+    alias = tmp_path / "late-hard-link"
+    original_read = os.read
+
+    def create_hard_link_during_read(descriptor, size):
+        content = original_read(descriptor, size)
+        if content and not alias.exists():
+            os.link(target, alias)
+        return content
+
+    monkeypatch.setattr(os, "read", create_hard_link_during_read)
+    with pytest.raises(WorkspaceError, match="Hard-linked"):
+        workspace.read_text("notes.txt")
