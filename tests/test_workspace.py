@@ -1,4 +1,6 @@
+import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -69,3 +71,123 @@ def test_file_listing_hides_private_and_generated_directories(tmp_path: Path) ->
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "main.js").write_text("safe")
     assert workspace.list_files() == ["src/main.js"]
+
+
+@pytest.mark.skipif(not hasattr(os, "O_NOFOLLOW"), reason="no no-follow open support")
+def test_read_rejects_symlink_replaced_after_path_validation(tmp_path, monkeypatch) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    target = workspace.root / "notes.txt"
+    target.write_text("workspace content", encoding="utf-8")
+    outside = tmp_path / "outside.txt"
+    outside.write_text("private content", encoding="utf-8")
+    original_resolve = workspace.resolve
+
+    def replace_after_validation(relative_path):
+        resolved = original_resolve(relative_path)
+        if relative_path == "notes.txt":
+            target.unlink()
+            target.symlink_to(outside)
+        return resolved
+
+    monkeypatch.setattr(workspace, "resolve", replace_after_validation)
+    with pytest.raises(WorkspaceError):
+        workspace.read_text("notes.txt")
+
+
+def test_read_limit_is_enforced_on_open_descriptor(tmp_path, monkeypatch) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    target = workspace.root / "large.txt"
+    target.write_text("x" * 1024, encoding="utf-8")
+    original_stat = Path.stat
+
+    def report_small_file(path, *args, **kwargs):
+        metadata = original_stat(path, *args, **kwargs)
+        if path == target:
+            return SimpleNamespace(st_mode=metadata.st_mode, st_size=1)
+        return metadata
+
+    monkeypatch.setattr(Path, "stat", report_small_file)
+    with pytest.raises(WorkspaceError, match="read limit"):
+        workspace.read_text("large.txt", max_bytes=16)
+
+
+@pytest.mark.skipif(
+    not hasattr(os, "mkfifo") or not hasattr(os, "O_NONBLOCK"),
+    reason="named pipes or non-blocking opens are unavailable",
+)
+def test_read_rejects_fifo_even_if_path_checks_report_regular_file(tmp_path, monkeypatch) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    fifo = workspace.root / "pipe"
+    os.mkfifo(fifo)
+    original_is_file = Path.is_file
+
+    def report_regular_file(path):
+        if path == fifo:
+            return True
+        return original_is_file(path)
+
+    monkeypatch.setattr(Path, "is_file", report_regular_file)
+    with pytest.raises(WorkspaceError, match="regular file"):
+        workspace.read_text("pipe")
+
+
+@pytest.mark.skipif(
+    not Workspace._supports_descriptor_paths(),
+    reason="descriptor-relative filesystem operations are unavailable",
+)
+def test_write_stays_in_open_directory_if_parent_is_replaced(tmp_path, monkeypatch) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    parent = workspace.root / "nested"
+    parent.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    backup = workspace.root / "nested-original"
+    original_open_parent = workspace._open_parent_directory
+
+    def open_then_replace(relative_path, create):
+        descriptor, filename = original_open_parent(relative_path, create)
+        if relative_path == "nested/new.txt":
+            parent.rename(backup)
+            parent.symlink_to(outside, target_is_directory=True)
+        return descriptor, filename
+
+    monkeypatch.setattr(workspace, "_open_parent_directory", open_then_replace)
+    try:
+        workspace.write_text("nested/new.txt", "safe")
+    finally:
+        parent.unlink()
+        backup.rename(parent)
+
+    assert (parent / "new.txt").read_text(encoding="utf-8") == "safe"
+    assert not (outside / "new.txt").exists()
+
+
+@pytest.mark.skipif(
+    not Workspace._supports_descriptor_paths(),
+    reason="descriptor-relative filesystem operations are unavailable",
+)
+def test_read_rejects_parent_symlink_replaced_after_path_validation(tmp_path, monkeypatch) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    parent = workspace.root / "nested"
+    parent.mkdir()
+    (parent / "notes.txt").write_text("workspace content", encoding="utf-8")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "notes.txt").write_text("private content", encoding="utf-8")
+    backup = workspace.root / "nested-original"
+    original_resolve = workspace.resolve
+
+    def replace_after_validation(relative_path):
+        resolved = original_resolve(relative_path)
+        if relative_path == "nested/notes.txt":
+            parent.rename(backup)
+            parent.symlink_to(outside, target_is_directory=True)
+        return resolved
+
+    monkeypatch.setattr(workspace, "resolve", replace_after_validation)
+    try:
+        with pytest.raises(WorkspaceError):
+            workspace.read_text("nested/notes.txt")
+    finally:
+        parent.unlink()
+        backup.rename(parent)
