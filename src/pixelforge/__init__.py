@@ -1,3 +1,3 @@
-"""PixelForge: an open-source AI agent for 2D game development."""
+"""PixelForge: an open-source AI agent specialized for 2D game development."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
