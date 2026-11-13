@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import os
 import stat
 import tempfile
@@ -38,6 +39,14 @@ class Workspace:
             and hasattr(os, "O_NOFOLLOW")
             and all(operation in os.supports_dir_fd for operation in required)
             and os.stat in os.supports_follow_symlinks
+        )
+
+    @staticmethod
+    def _supports_descriptor_listing() -> bool:
+        return (
+            Workspace._supports_descriptor_paths()
+            and hasattr(os, "supports_fd")
+            and os.listdir in os.supports_fd
         )
 
     def _open_root_directory(self) -> int:
@@ -122,9 +131,75 @@ class Workspace:
                 raise WorkspaceError("Symlinks are not allowed.")
         return candidate
 
+    def _list_files_by_descriptor(self, limit: int) -> list[str]:
+        result: list[str] = []
+        pending: list[tuple[str, ...]] = [()]
+        directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        root_descriptor = self._open_root_directory()
+
+        try:
+            while pending:
+                parts = pending.pop()
+                descriptor = os.dup(root_descriptor)
+                try:
+                    for part in parts:
+                        next_descriptor = os.open(
+                            part, directory_flags, dir_fd=descriptor
+                        )
+                        os.close(descriptor)
+                        descriptor = next_descriptor
+
+                    names = sorted(os.listdir(descriptor))
+                    child_directories: list[tuple[str, ...]] = []
+                    files: list[str] = []
+                    for name in names:
+                        lowered = name.lower()
+                        if lowered in _IGNORED_DIRS:
+                            continue
+                        try:
+                            metadata = os.stat(
+                                name, dir_fd=descriptor, follow_symlinks=False
+                            )
+                        except FileNotFoundError:
+                            continue
+
+                        relative_parts = (*parts, name)
+                        if stat.S_ISDIR(metadata.st_mode):
+                            if (
+                                not lowered.startswith(".pixelforge-stage-")
+                                and not self._is_protected((name,))
+                            ):
+                                child_directories.append(relative_parts)
+                        elif (
+                            stat.S_ISREG(metadata.st_mode)
+                            and not self._is_protected(relative_parts)
+                        ):
+                            files.append("/".join(relative_parts))
+
+                    for relative_path in files:
+                        result.append(relative_path)
+                        if len(result) >= limit:
+                            return result
+                    pending.extend(reversed(child_directories))
+                except OSError as exc:
+                    if exc.errno in {errno.ENOENT, errno.ENOTDIR, errno.ELOOP}:
+                        continue
+                    raise WorkspaceError(
+                        "Project files could not be listed safely."
+                    ) from exc
+                finally:
+                    os.close(descriptor)
+        finally:
+            os.close(root_descriptor)
+
+        return result
+
     def list_files(self, limit: int = 200) -> list[str]:
         if limit < 1:
             raise WorkspaceError("limit must be positive.")
+        if self._supports_descriptor_listing():
+            return self._list_files_by_descriptor(limit)
+
         result: list[str] = []
         for root, directories, filenames in os.walk(self.root, topdown=True, followlinks=False):
             base = Path(root)
