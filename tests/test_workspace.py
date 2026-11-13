@@ -248,6 +248,12 @@ def test_listing_does_not_follow_directory_replaced_with_symlink(tmp_path, monke
             return original_open(path, flags, mode)
         return original_open(path, flags, mode, dir_fd=dir_fd)
 
+    # The monkeypatched os.open wrapper is not registered in os.supports_dir_fd.
+    # Keep the platform capability decision stable so this test exercises the
+    # descriptor-relative traversal path rather than the portable fallback.
+    monkeypatch.setattr(
+        Workspace, "_supports_descriptor_listing", staticmethod(lambda: True)
+    )
     monkeypatch.setattr(os, "open", replace_before_open)
     try:
         assert workspace.list_files() == []
