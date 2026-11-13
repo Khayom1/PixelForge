@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from pixelforge.provider import ModelReply
@@ -67,6 +69,43 @@ def test_agent_rejects_symlinked_trace_file(tmp_path) -> None:
         runtime.run("Inspect the project.")
 
     assert outside_trace.read_text(encoding="utf-8") == "preserve this file\n"
+
+
+def test_agent_rejects_hard_linked_trace_file(tmp_path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    trace_directory = workspace.root / ".pixelforge"
+    trace_directory.mkdir()
+    protected_file = tmp_path / "protected.jsonl"
+    protected_file.write_text("preserve this file\n", encoding="utf-8")
+    trace_path = trace_directory / "traces.jsonl"
+    os.link(protected_file, trace_path)
+    runtime = AgentRuntime(
+        FakeProvider(),
+        build_registry(workspace),
+        trace_path=trace_path,
+    )
+
+    with pytest.raises(RuntimeError, match="Trace path"):
+        runtime.run("Inspect the project.")
+
+    assert protected_file.read_text(encoding="utf-8") == "preserve this file\n"
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="named pipes are unavailable")
+def test_agent_rejects_non_regular_trace_target_without_blocking(tmp_path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    trace_directory = workspace.root / ".pixelforge"
+    trace_directory.mkdir()
+    trace_path = trace_directory / "traces.jsonl"
+    os.mkfifo(trace_path)
+    runtime = AgentRuntime(
+        FakeProvider(),
+        build_registry(workspace),
+        trace_path=trace_path,
+    )
+
+    with pytest.raises(RuntimeError, match="Trace path"):
+        runtime.run("Inspect the project.")
 
 
 def test_agent_step_limit(tmp_path) -> None:

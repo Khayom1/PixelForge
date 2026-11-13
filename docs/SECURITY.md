@@ -5,7 +5,7 @@ PixelForge executes model-directed operations. Treat model output, project files
 ## Current controls
 
 - Provider credentials are read from environment variables only and are never added to model messages or trace events by the runtime.
-- Trace writes reject symlinked path components; on platforms with descriptor-relative filesystem APIs, directory traversal and final file opening use no-follow semantics. New trace files use restrictive permissions where supported.
+- Trace writes reject symlinked path components, non-regular targets, and hard-linked files; on platforms with descriptor-relative filesystem APIs, directory traversal and final file opening use no-follow semantics. New trace files use restrictive permissions where supported.
 - Provider endpoint configuration must use an absolute HTTP(S) URL without embedded user information, query strings, or fragments.
 - Bearer API keys are sent only over HTTPS; plain HTTP endpoints are accepted with an API key only when the host is loopback (`localhost`, `127.0.0.0/8`, or `::1`).
 - Provider bearer credentials use unredirected request headers, so they are not forwarded to HTTP redirect targets.

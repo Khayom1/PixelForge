@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import time
 import uuid
 from pathlib import Path
@@ -46,8 +47,22 @@ class AgentRuntime:
         self.trace_path = Path(trace_path) if trace_path else None
 
     @staticmethod
+    def _validate_trace_descriptor(descriptor: int) -> int:
+        """Reject trace targets that could redirect or corrupt writes elsewhere."""
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise OSError("Trace target is not a regular file.")
+            if metadata.st_nlink != 1:
+                raise OSError("Trace target must not be hard-linked.")
+        except BaseException:
+            os.close(descriptor)
+            raise
+        return descriptor
+
+    @staticmethod
     def _open_trace_file(path: Path) -> int:
-        """Open a trace file without traversing symlinked directories or files."""
+        """Open a regular, single-link trace file without following symlinks."""
         absolute_path = Path(os.path.abspath(path))
         if not absolute_path.name:
             raise RuntimeError("Trace path must identify a file.")
@@ -73,12 +88,14 @@ class AgentRuntime:
                     os.close(directory_fd)
                     directory_fd = next_fd
 
-                return os.open(
+                descriptor = os.open(
                     absolute_path.name,
-                    os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW,
+                    os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW
+                    | getattr(os, "O_NONBLOCK", 0),
                     0o600,
                     dir_fd=directory_fd,
                 )
+                return AgentRuntime._validate_trace_descriptor(descriptor)
             finally:
                 os.close(directory_fd)
 
@@ -90,10 +107,11 @@ class AgentRuntime:
         for candidate in (absolute_path, *absolute_path.parents):
             if candidate.is_symlink():
                 raise RuntimeError("Trace path must not contain symlink components.")
-        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NONBLOCK", 0)
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
-        return os.open(absolute_path, flags, 0o600)
+        descriptor = os.open(absolute_path, flags, 0o600)
+        return AgentRuntime._validate_trace_descriptor(descriptor)
 
     def _trace(self, event: dict[str, Any]) -> None:
         if not self.trace_path:
@@ -102,7 +120,7 @@ class AgentRuntime:
             descriptor = self._open_trace_file(self.trace_path)
         except OSError as exc:
             raise RuntimeError(
-                "Trace path contains a symlink or cannot be opened safely."
+                "Trace path is unsafe or cannot be opened."
             ) from exc
         with os.fdopen(descriptor, "a", encoding="utf-8") as stream:
             stream.write(json.dumps({"timestamp": time.time(), **event}) + "\n")
